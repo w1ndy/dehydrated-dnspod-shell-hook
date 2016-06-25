@@ -1,6 +1,6 @@
 # DNSPOD hook for `letsencrypt.sh`
 
-This a hook for [letsencrypt.sh](https://github.com/lukas2511/letsencrypt.sh) (a [Let's Encrypt](https://letsencrypt.org/) ACME client) that allows you to use [DNS](https://www.dnspod.cn/) DNS records to respond to `dns-01` challenges. Requires Python and your DNSPOD account API token being in the environment.
+This a hook for [letsencrypt.sh](https://github.com/lukas2511/letsencrypt.sh) (a [Let's Encrypt](https://letsencrypt.org/) ACME client) that allows you to use [DNSPod](https://www.dnspod.cn/) DNS records to respond to `dns-01` challenges. Requires Python and your DNSPod account API token being in the environment.
 
 ## Installation
 
@@ -20,7 +20,7 @@ $ pip install -r hooks/dnspod/requirements-python-2.txt
 
 ## Configuration
 
-Your account's DNSPOD LOGIN Token are expected to be in the environment, so make sure to:
+Your account's DNSPod LOGIN Token are expected to be in the environment, so make sure to:
 
 ```
 $ export DNSPOD_LOGIN_TOKEN='YOUR-DNSPOD-LOGIN-TOKEN'
@@ -48,17 +48,17 @@ Processing example.com
  + Generating private key...
  + Generating signing request...
  + Requesting challenge for example.com...
- + CloudFlare hook executing: deploy_challenge
+ + DNSPod hook executing: deploy_challenge
  + DNS not propagated, waiting 30s...
  + DNS not propagated, waiting 30s...
  + Responding to challenge for example.com...
- + CloudFlare hook executing: clean_challenge
+ + DNSPod hook executing: clean_challenge
  + Challenge is valid!
  + Requesting certificate...
  + Checking certificate...
  + Done!
  + Creating fullchain.pem...
- + CloudFlare hook executing: deploy_cert
+ + DNSPod hook executing: deploy_cert
  + ssl_certificate: /home/user/letsencrypt.sh/certs/example.com/fullchain.pem
  + ssl_certificate_key: /home/user/letsencrypt.sh/certs/example.com/privkey.pem
  + Done!

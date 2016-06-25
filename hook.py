@@ -36,7 +36,7 @@ try:
         'login_token' : os.environ['DNSPOD_LOGIN_TOKEN'],
     }
 except KeyError:
-    logger.error(" + Unable to locate DNSPOD credentials in environment!")
+    logger.error(" + Unable to locate DNSPod credentials in environment!")
     sys.exit(1)
 
 try:
@@ -99,7 +99,7 @@ def _get_txt_record_id(domain, token):
         for rec in r.json()['records']:
             if rec['type'] == 'TXT' and rec['value'] == token:
                 return rec['id']
-    except IndexError:
+    except (IndexError, KeyError):
         logger.info(" + Unable to locate record named {0}".format(domain))
         return
 
@@ -163,7 +163,7 @@ def main(argv):
         'deploy_cert'     : deploy_cert,
         'unchanged_cert'  : unchanged_cert,
     }
-    logger.info(" + DNSPOD hook executing: {0}".format(argv[0]))
+    logger.info(" + DNSPod hook executing: {0}".format(argv[0]))
     ops[argv[0]](argv[1:])
 
 
