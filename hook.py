@@ -1,15 +1,15 @@
 #!/usr/bin/env python
+# coding=utf-8
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from builtins import str
-
 from future import standard_library
 standard_library.install_aliases()
 
+import socket
 import dns.exception
 import dns.resolver
 import logging
@@ -29,21 +29,22 @@ logger = logging.getLogger(__name__)
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.INFO)
 
+ACME_DNS_PREFIX = '_acme-challenge'
+
 try:
-    CF_HEADERS = {
-        'X-Auth-Email': os.environ['CF_EMAIL'],
-        'X-Auth-Key'  : os.environ['CF_KEY'],
-        'Content-Type': 'application/json',
+    DNSPOD_AUTH_PARAMS = {
+        'login_token' : os.environ['DNSPOD_LOGIN_TOKEN'],
     }
 except KeyError:
-    logger.error(" + Unable to locate Cloudflare credentials in environment!")
+    logger.error(" + Unable to locate DNSPOD credentials in environment!")
     sys.exit(1)
 
 try:
-    dns_servers = os.environ['CF_DNS_SERVERS']
-    dns_servers = dns_servers.split()
+    dns_servers = os.environ['DNSPOD_DNS_SERVERS']
+    dns_servers = map(socket.gethostbyname, dns_servers.split())
 except KeyError:
     dns_servers = False
+
 
 def _has_dns_propagated(name, token):
     txt_records = []
@@ -58,6 +59,7 @@ def _has_dns_propagated(name, token):
             for txt_record in rdata.strings:
                 txt_records.append(txt_record)
     except dns.exception.DNSException as error:
+        logger.exception("check TXT record failed")
         return False
 
     for txt_record in txt_records:
@@ -66,71 +68,83 @@ def _has_dns_propagated(name, token):
 
     return False
 
+def _execute_dnspod_action(action, domain, params):
+    res = get_tld('http://' + domain, as_object=True)
+    sub_domain, tld = res.subdomain, res.tld
+    if sub_domain:
+        sub_domain = "%s.%s" % (ACME_DNS_PREFIX, sub_domain)
+    else:
+        sub_domain = ACME_DNS_PREFIX
 
-# https://api.cloudflare.com/#zone-list-zones
-def _get_zone_id(domain):
-    tld = get_tld('http://' + domain)
-    url = "https://api.cloudflare.com/client/v4/zones?name={0}".format(tld)
-    r = requests.get(url, headers=CF_HEADERS)
+    url = "https://dnsapi.cn/%s" % action
+    payload = {
+        'domain' : tld,
+        'sub_domain' : sub_domain,
+        'format' : 'json',
+    }
+    payload.update(params)
+    payload.update(DNSPOD_AUTH_PARAMS)
+    r = requests.post(url, data=payload)
     r.raise_for_status()
-    return r.json()['result'][0]['id']
+    return r
 
-
-# https://api.cloudflare.com/#dns-records-for-a-zone-dns-record-details
-def _get_txt_record_id(zone_id, name, token):
-    url = "https://api.cloudflare.com/client/v4/zones/{0}/dns_records?type=TXT&name={1}&content={2}".format(zone_id, name, token)
-    r = requests.get(url, headers=CF_HEADERS)
-    r.raise_for_status()
+# https://www.dnspod.cn/docs/records.html#record-list
+def _get_txt_record_id(domain, token):
+    action = 'Record.List'
+    payload = {
+        'keyword' : token,
+    }
+    r = _execute_dnspod_action(action, domain, payload)
     try:
-        record_id = r.json()['result'][0]['id']
+        for rec in r.json()['records']:
+            if rec['type'] == 'TXT' and rec['value'] == token:
+                return rec['id']
     except IndexError:
-        logger.info(" + Unable to locate record named {0}".format(name))
+        logger.info(" + Unable to locate record named {0}".format(domain))
         return
 
-    return record_id
 
-
-# https://api.cloudflare.com/#dns-records-for-a-zone-create-dns-record
+# https://www.dnspod.cn/docs/records.html#record-create
 def create_txt_record(args):
     domain, token = args[0], args[2]
-    zone_id = _get_zone_id(domain)
-    name = "{0}.{1}".format('_acme-challenge', domain)
-    url = "https://api.cloudflare.com/client/v4/zones/{0}/dns_records".format(zone_id)
+    
+    action = 'Record.Create'
     payload = {
-        'type': 'TXT',
-        'name': name,
-        'content': token,
-        'ttl': 1,
+        'record_type': 'TXT',
+        'record_line': '默认',
+        'value' :  token,
     }
-    r = requests.post(url, headers=CF_HEADERS, json=payload)
-    r.raise_for_status()
-    record_id = r.json()['result']['id']
+    r = _execute_dnspod_action(action, domain, payload)
+
+    record_id = r.json()['record']['id']
     logger.debug("+ TXT record created, ID: {0}".format(record_id))
 
     # give it 10 seconds to settle down and avoid nxdomain caching
     logger.info(" + Settling down for 10s...")
     time.sleep(10)
 
+    name = "{0}.{1}".format(ACME_DNS_PREFIX, domain)
     while(_has_dns_propagated(name, token) == False):
         logger.info(" + DNS not propagated, waiting 30s...")
         time.sleep(30)
 
 
-# https://api.cloudflare.com/#dns-records-for-a-zone-delete-dns-record
+# https://www.dnspod.cn/docs/records.html#record-remove
 def delete_txt_record(args):
     domain, token = args[0], args[2]
     if not domain:
         logger.info(" + http_request() error in letsencrypt.sh?")
         return
 
-    zone_id = _get_zone_id(domain)
-    name = "{0}.{1}".format('_acme-challenge', domain)
-    record_id = _get_txt_record_id(zone_id, name, token)
+    record_id = _get_txt_record_id(domain, token)
 
+    name = "{0}.{1}".format(ACME_DNS_PREFIX, domain)
     logger.debug(" + Deleting TXT record name: {0}".format(name))
-    url = "https://api.cloudflare.com/client/v4/zones/{0}/dns_records/{1}".format(zone_id, record_id)
-    r = requests.delete(url, headers=CF_HEADERS)
-    r.raise_for_status()
+    action = "Record.Remove"
+    payload = {
+        'record_id' : record_id
+    }
+    _execute_dnspod_action(action, domain, payload)
 
 
 def deploy_cert(args):
@@ -149,7 +163,7 @@ def main(argv):
         'deploy_cert'     : deploy_cert,
         'unchanged_cert'  : unchanged_cert,
     }
-    logger.info(" + CloudFlare hook executing: {0}".format(argv[0]))
+    logger.info(" + DNSPOD hook executing: {0}".format(argv[0]))
     ops[argv[0]](argv[1:])
 
 
