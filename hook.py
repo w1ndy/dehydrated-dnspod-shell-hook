@@ -160,13 +160,16 @@ def deploy_cert(args):
 def unchanged_cert(args):
     return
 
+def exit_hook(args):
+    return
+
 def main(argv):
     ops = {
         'deploy_challenge': create_txt_record,
         'clean_challenge' : delete_txt_record,
         'deploy_cert'     : deploy_cert,
         'unchanged_cert'  : unchanged_cert,
-        'exit_hook'  : unchanged_cert,
+        'exit_hook'       : exit_hook,
     }
     logger.info(" + DNSPod hook executing: {0}".format(argv[0]))
     ops[argv[0]](argv[1:])
