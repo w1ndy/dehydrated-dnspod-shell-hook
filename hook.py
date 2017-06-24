@@ -95,6 +95,7 @@ def _get_txt_record_id(domain, token):
         'keyword' : token,
     }
     r = _execute_dnspod_action(action, domain, payload)
+    logger.debug(" + Json retsults: {0}".format(r.text))
     try:
         for rec in r.json()['records']:
             if rec['type'] == 'TXT' and rec['value'] == token:
@@ -162,6 +163,7 @@ def main(argv):
         'clean_challenge' : delete_txt_record,
         'deploy_cert'     : deploy_cert,
         'unchanged_cert'  : unchanged_cert,
+        'exit_hook'  : unchanged_cert,
     }
     logger.info(" + DNSPod hook executing: {0}".format(argv[0]))
     ops[argv[0]](argv[1:])
