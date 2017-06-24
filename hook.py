@@ -95,7 +95,6 @@ def _get_txt_record_id(domain, token):
         'keyword' : token,
     }
     r = _execute_dnspod_action(action, domain, payload)
-    logger.debug(" + Json retsults: {0}".format(r.text))
     try:
         for rec in r.json()['records']:
             if rec['type'] == 'TXT' and rec['value'] == token:
