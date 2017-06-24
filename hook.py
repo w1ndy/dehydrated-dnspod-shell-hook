@@ -96,6 +96,10 @@ def _get_txt_record_id(domain, token):
     }
     r = _execute_dnspod_action(action, domain, payload)
     try:
+        while r.json()['status']['code'] == '10':
+            r = _execute_dnspod_action(action, domain, payload)
+            logger.info(" + DNS record not found, will try again in 50s...")
+            time.sleep(50)
         for rec in r.json()['records']:
             if rec['type'] == 'TXT' and rec['value'] == token:
                 return rec['id']
