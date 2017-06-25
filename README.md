@@ -1,12 +1,12 @@
-# DNSPOD hook for `letsencrypt.sh`
+# DNSPOD hook for `dehydrated`
 
-This a hook for [letsencrypt.sh](https://github.com/lukas2511/letsencrypt.sh) (a [Let's Encrypt](https://letsencrypt.org/) ACME client) that allows you to use [DNSPod](https://www.dnspod.cn/) DNS records to respond to `dns-01` challenges. Requires Python and your DNSPod account API token being in the environment.
+This a hook for [dehydrated](https://github.com/lukas2511/dehydrated) (a [Let's Encrypt](https://letsencrypt.org/) ACME client) that allows you to use [DNSPod](https://www.dnspod.cn/) DNS records to respond to `dns-01` challenges. Requires Python and your DNSPod account API token being in the environment.
 
 ## Installation
 
 ```
-$ git clone https://github.com/lukas2511/letsencrypt.sh
-$ cd letsencrypt.sh
+$ git clone https://github.com/lukas2511/dehydrated
+$ cd dehydrated
 $ mkdir hooks
 $ git clone https://github.com/ftao/letsencrypt-dnspod-hook hooks/dnspod
 $ pip install -r hooks/dnspod/requirements.txt
@@ -27,10 +27,10 @@ $ export DNSPOD_LOGIN_TOKEN='YOUR-DNSPOD-LOGIN-TOKEN'
 ```
 
 
-Alternatively, these statements can be placed in `letsencrypt.sh/config.sh`, which is automatically sourced by `letsencrypt.sh` on startup:
+Alternatively, these statements can be placed in `dehydrated/config.sh`, which is automatically sourced by `dehydrated` on startup:
 
 ```
-echo "export DNSPOD_API_TOKEN='YOUR-DNSPOD-LOGIN-TOKEN'" >> config.sh
+echo "export DNSPOD_LOGIN_TOKEN='YOUR-DNSPOD-LOGIN-TOKEN'" >> config.sh
 ```
 
 
@@ -38,13 +38,13 @@ echo "export DNSPOD_API_TOKEN='YOUR-DNSPOD-LOGIN-TOKEN'" >> config.sh
 ## Usage
 
 ```
-$ ./letsencrypt.sh -c -d example.com -t dns-01 -k 'hooks/dnspod/hook.py'
+$ ./dehydrated -c -d example.com -t dns-01 -k 'hooks/dnspod/hook.py'
 #
 # !! WARNING !! No main config file found, using default config!
 #
 Processing example.com
  + Signing domains...
- + Creating new directory /home/user/letsencrypt.sh/certs/example.com ...
+ + Creating new directory /home/user/dehydrated/certs/example.com ...
  + Generating private key...
  + Generating signing request...
  + Requesting challenge for example.com...
@@ -59,8 +59,8 @@ Processing example.com
  + Done!
  + Creating fullchain.pem...
  + DNSPod hook executing: deploy_cert
- + ssl_certificate: /home/user/letsencrypt.sh/certs/example.com/fullchain.pem
- + ssl_certificate_key: /home/user/letsencrypt.sh/certs/example.com/privkey.pem
+ + ssl_certificate: /home/user/dehydrated/certs/example.com/fullchain.pem
+ + ssl_certificate_key: /home/user/dehydrated/certs/example.com/privkey.pem
  + Done!
 ```
 

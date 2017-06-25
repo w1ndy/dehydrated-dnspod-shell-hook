@@ -96,6 +96,10 @@ def _get_txt_record_id(domain, token):
     }
     r = _execute_dnspod_action(action, domain, payload)
     try:
+        while r.json()['status']['code'] == '10':
+            r = _execute_dnspod_action(action, domain, payload)
+            logger.info(" + DNS record not found, will try again in 10s...")
+            time.sleep(10)
         for rec in r.json()['records']:
             if rec['type'] == 'TXT' and rec['value'] == token:
                 return rec['id']
@@ -156,12 +160,16 @@ def deploy_cert(args):
 def unchanged_cert(args):
     return
 
+def exit_hook(args):
+    return
+
 def main(argv):
     ops = {
         'deploy_challenge': create_txt_record,
         'clean_challenge' : delete_txt_record,
         'deploy_cert'     : deploy_cert,
         'unchanged_cert'  : unchanged_cert,
+        'exit_hook'       : exit_hook,
     }
     logger.info(" + DNSPod hook executing: {0}".format(argv[0]))
     ops[argv[0]](argv[1:])
