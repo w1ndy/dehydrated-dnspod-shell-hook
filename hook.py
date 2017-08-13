@@ -172,7 +172,10 @@ def main(argv):
         'exit_hook'       : exit_hook,
     }
     logger.info(" + DNSPod hook executing: {0}".format(argv[0]))
-    ops[argv[0]](argv[1:])
+    if argv[0] in ops:
+        ops[argv[0]](argv[1:])
+    else:
+        logger.info(" + Do nothing.")
 
 
 if __name__ == '__main__':
