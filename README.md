@@ -4,6 +4,8 @@ This a hook for [dehydrated](https://github.com/lukas2511/dehydrated) (a [Let's 
 
 ## Installation
 
+``dig`` is required to verify DNS records.
+
 ```
 $ git clone https://github.com/lukas2511/dehydrated
 $ cd dehydrated
