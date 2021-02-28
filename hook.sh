@@ -23,7 +23,7 @@ check_login_token() {
     stderr " ! No DNSPOD_LOGIN_TOKEN specified"
     exit 1
   fi
-  
+
   local resp
   resp="$(curl -s -X POST https://dnsapi.cn/Domain.List -d "login_token=$DNSPOD_LOGIN_TOKEN&format=json")"
   if ! succeeded "$resp"; then
@@ -74,7 +74,7 @@ execute_dnspod_action() {
 
   stderr " + DNSPod: Executing $action on $subdomain for $tld..."
   local resp
-  resp="$(curl -s -X POST "https://dnsapi.cn/$action" -d "login_token=$DNSPOD_LOGIN_TOKEN&domain=$tld&sub_domain=$subdomain&format=json$params")"
+  resp="$(curl -s -X POST "https://dnsapi.cn/$action" -d "login_token=$DNSPOD_LOGIN_TOKEN&domain=$tld&sub_domain=$subdomain&format=json&lang=en$params")"
   if ! succeeded "$resp"; then return 1; fi
 
   echo $resp
@@ -91,24 +91,26 @@ deploy_challenge() {
   if [[ $? -ne 0 ]]; then return 1; fi
   rid="$(echo $result | grep -Po "(?<=\"id\":\").*?(?=\")")"
   stderr " + DNSPod: TXT record created, ID $rid"
-  
+
+  set +e
   while : ; do
     stderr " + DNSPod: Waiting 10 sec..."
     sleep 10
     local records
-    stderr " + DNSPod: Resolving TXT records for domain $domain..."
+    stderr " + DNSPod: Resolving TXT records for domain $domain with DNS $DNS_SERVER ..."
     records=$(dig @$DNS_SERVER TXT +short $domain)
     if [[ $? -ne 0 ]]; then
       stderr " ! DNSPod: Failed to resolve TXT records for domain $domain"
-      return 1
+    else
+      for rec in $records; do
+        stderr " + DNSPod: Processing record $rec..."
+        if [[ "$rec" =~ "$token" ]]; then
+          stderr " + DNSPod: Done deploying challenge"
+          set -e
+          return 0
+        fi
+      done
     fi
-    for rec in $records; do
-      stderr " + DNSPod: Processing record $rec..."
-      if [[ "$rec" =~ "$token" ]]; then
-	stderr " + DNSPod: Done deploying challenge"
-        return 0
-      fi
-    done
   done
 }
 
@@ -116,11 +118,14 @@ clean_challenge() {
   local domain="$ACME_DNS_PREFIX.$1"
   local token="$3"
   stderr " + DNSPod: Cleaning challenge token..."
-  
+
   local result
-  result="$(execute_dnspod_action Record.List $domain "&record_type=TXT&keyword=$token")"
-  if [[ $? -ne 0 ]]; then return 1; fi
-  
+  result="$(execute_dnspod_action Record.List $domain "&record_type=TXT")"
+  if [[ $? -ne 0 ]]; then
+    stderr " + DNSPod: No challenge token found."
+    return 0;
+  fi
+
   local ids
   ids="$(echo $result | grep -Po "(?<=\"id\":\").*?(?=\")" | tail -n +2)"
   for id in $ids; do
@@ -138,4 +143,3 @@ main() {
 }
 
 main $@
-
